@@ -25,7 +25,13 @@ export async function GET(request: Request) {
     return new Response('Empty book data', { status: 502 })
   }
 
-  return new Response(data, {
+  const json = JSON.parse(data)
+  const ogImage = htmlText.match(
+    /<meta\s+property="og:image"\s+content="([^"]+)"/
+  )?.[1]
+  json.image = ogImage ?? json.image
+
+  return new Response(JSON.stringify(json), {
     headers: { 'content-type': 'application/json' }
   })
 }
