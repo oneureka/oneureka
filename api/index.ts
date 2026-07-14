@@ -1,19 +1,31 @@
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const isbn = url.searchParams.get('isbn')
+
+  if (!isbn) {
+    return new Response('Missing isbn parameter', { status: 400 })
+  }
+
   const response = await fetch(`https://book.douban.com/isbn/${isbn}/`)
+  if (!response.ok) {
+    return new Response('Failed to fetch book page', { status: 502 })
+  }
 
-  const _location = response.headers.get('location')
-  const _bookId = (_location?.match(/\d+/) || '')[0]
-
-  return new Response(await fetchBook(_bookId))
-}
-
-async function fetchBook(bookId: string) {
-  const response = await fetch(`https://book.douban.com/subject/${bookId}/`)
   const htmlText = await response.text()
-  const [_1, text] = htmlText.split('<script type="application/ld+json">')
-  const [data, _2] = text.split('</script>')
 
-  return JSON.parse(data)
+  const parts = htmlText.split('<script type="application/ld+json">')
+  if (parts.length < 2) {
+    return new Response('Failed to parse book data', { status: 502 })
+  }
+
+  const [, text] = parts
+  const [data] = text.split('</script>')
+
+  if (!data) {
+    return new Response('Empty book data', { status: 502 })
+  }
+
+  return new Response(data, {
+    headers: { 'content-type': 'application/json' }
+  })
 }
